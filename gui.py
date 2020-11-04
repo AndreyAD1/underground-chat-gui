@@ -81,6 +81,12 @@ async def update_status_panel(status_labels, status_updates_queue):
             nickname_label['text'] = f'Имя пользователя: {msg.nickname}'
 
 
+async def add_sending_msg_to_msg_queue(sending_queue, message_queue):
+    while True:
+        sending_message = await sending_queue.get()
+        message_queue.put_nowait(sending_message)
+
+
 def create_status_panel(root_frame):
     status_frame = tk.Frame(root_frame)
     status_frame.pack(side="bottom", fill=tk.X)
@@ -97,7 +103,7 @@ def create_status_panel(root_frame):
     status_write_label = tk.Label(connections_frame, height=1, fg='grey', font='arial 10', anchor='w')
     status_write_label.pack(side="top", fill=tk.X)
 
-    return (nickname_label, status_read_label, status_write_label)
+    return nickname_label, status_read_label, status_write_label
 
 
 async def draw(messages_queue, sending_queue, status_updates_queue):
@@ -129,5 +135,6 @@ async def draw(messages_queue, sending_queue, status_updates_queue):
     await asyncio.gather(
         update_tk(root_frame),
         update_conversation_history(conversation_panel, messages_queue),
-        update_status_panel(status_labels, status_updates_queue)
+        update_status_panel(status_labels, status_updates_queue),
+        add_sending_msg_to_msg_queue(sending_queue, messages_queue)
     )
