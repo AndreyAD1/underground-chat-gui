@@ -94,7 +94,7 @@ async def read_msgs(message_queue, host, port):
         while True:
             received_data = await reader.readline()
             message = received_data.decode()
-            message_queue.put_nowait(message)
+            message_queue.put_nowait(message.strip())
 
 
 def create_status_panel(root_frame):
