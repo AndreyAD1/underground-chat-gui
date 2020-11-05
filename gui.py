@@ -1,3 +1,4 @@
+import time
 import tkinter as tk
 import asyncio
 from tkinter.scrolledtext import ScrolledText
@@ -87,6 +88,13 @@ async def add_sending_msg_to_msg_queue(sending_queue, message_queue):
         message_queue.put_nowait(sending_message)
 
 
+async def generate_msgs(message_queue):
+    while True:
+        new_message = f'Ping {int(time.time())}'
+        message_queue.put_nowait(new_message)
+        await asyncio.sleep(1)
+
+
 def create_status_panel(root_frame):
     status_frame = tk.Frame(root_frame)
     status_frame.pack(side="bottom", fill=tk.X)
@@ -136,5 +144,6 @@ async def draw(messages_queue, sending_queue, status_updates_queue):
         update_tk(root_frame),
         update_conversation_history(conversation_panel, messages_queue),
         update_status_panel(status_labels, status_updates_queue),
-        add_sending_msg_to_msg_queue(sending_queue, messages_queue)
+        add_sending_msg_to_msg_queue(sending_queue, messages_queue),
+        generate_msgs(messages_queue)
     )
