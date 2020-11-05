@@ -14,14 +14,14 @@ def get_input_arguments():
         help='The chat address.'
     )
     argument_parser.add(
-        '--port',
+        '--reading_port',
         type=int,
         default=5000,
         env_var='READING_PORT',
         help='The port number to read the chat messages.'
     )
     argument_parser.add(
-        '--port',
+        '--writing_port',
         type=int,
         default=5050,
         env_var='WRITING_PORT',
@@ -50,8 +50,6 @@ def get_input_arguments():
 
 def main():
     input_arguments = get_input_arguments()
-    user_token, user_name = input_arguments.token, input_arguments.user_name
-    chat_host, chat_port = input_arguments.host, input_arguments.port
 
     loop = asyncio.get_event_loop()
     messages_queue = asyncio.Queue()
@@ -60,6 +58,7 @@ def main():
 
     loop.run_until_complete(
         gui.draw(
+            input_arguments,
             messages_queue,
             sending_queue,
             status_updates_queue

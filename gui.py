@@ -1,8 +1,9 @@
-import time
 import tkinter as tk
 import asyncio
 from tkinter.scrolledtext import ScrolledText
 from enum import Enum
+
+from open_connection import open_connection
 
 
 class TkAppClosed(Exception):
@@ -88,11 +89,12 @@ async def add_sending_msg_to_msg_queue(sending_queue, message_queue):
         message_queue.put_nowait(sending_message)
 
 
-async def generate_msgs(message_queue):
-    while True:
-        new_message = f'Ping {int(time.time())}'
-        message_queue.put_nowait(new_message)
-        await asyncio.sleep(1)
+async def read_msgs(message_queue, host, port):
+    async with open_connection(host, port) as (reader, writer):
+        while True:
+            received_data = await reader.readline()
+            message = received_data.decode()
+            message_queue.put_nowait(message)
 
 
 def create_status_panel(root_frame):
@@ -102,19 +104,42 @@ def create_status_panel(root_frame):
     connections_frame = tk.Frame(status_frame)
     connections_frame.pack(side="left")
 
-    nickname_label = tk.Label(connections_frame, height=1, fg='grey', font='arial 10', anchor='w')
+    nickname_label = tk.Label(
+        connections_frame,
+        height=1,
+        fg='grey',
+        font='arial 10',
+        anchor='w'
+    )
     nickname_label.pack(side="top", fill=tk.X)
 
-    status_read_label = tk.Label(connections_frame, height=1, fg='grey', font='arial 10', anchor='w')
+    status_read_label = tk.Label(
+        connections_frame,
+        height=1,
+        fg='grey',
+        font='arial 10',
+        anchor='w'
+    )
     status_read_label.pack(side="top", fill=tk.X)
 
-    status_write_label = tk.Label(connections_frame, height=1, fg='grey', font='arial 10', anchor='w')
+    status_write_label = tk.Label(
+        connections_frame,
+        height=1,
+        fg='grey',
+        font='arial 10',
+        anchor='w'
+    )
     status_write_label.pack(side="top", fill=tk.X)
 
     return nickname_label, status_read_label, status_write_label
 
 
-async def draw(messages_queue, sending_queue, status_updates_queue):
+async def draw(
+        input_arguments,
+        messages_queue,
+        sending_queue,
+        status_updates_queue
+):
     root = tk.Tk()
 
     root.title('Чат Майнкрафтера')
@@ -130,7 +155,10 @@ async def draw(messages_queue, sending_queue, status_updates_queue):
     input_field = tk.Entry(input_frame)
     input_field.pack(side="left", fill=tk.X, expand=True)
 
-    input_field.bind("<Return>", lambda event: process_new_message(input_field, sending_queue))
+    input_field.bind(
+        "<Return>",
+        lambda event: process_new_message(input_field, sending_queue)
+    )
 
     send_button = tk.Button(input_frame)
     send_button["text"] = "Отправить"
@@ -140,10 +168,13 @@ async def draw(messages_queue, sending_queue, status_updates_queue):
     conversation_panel = ScrolledText(root_frame, wrap='none')
     conversation_panel.pack(side="top", fill="both", expand=True)
 
+    server_host = input_arguments.host
+    reading_port = input_arguments.reading_port
+
     await asyncio.gather(
         update_tk(root_frame),
         update_conversation_history(conversation_panel, messages_queue),
         update_status_panel(status_labels, status_updates_queue),
         add_sending_msg_to_msg_queue(sending_queue, messages_queue),
-        generate_msgs(messages_queue)
+        read_msgs(messages_queue, server_host, reading_port)
     )
