@@ -1,9 +1,59 @@
 import asyncio
 import gui
 
-if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
+import configargparse
 
+
+def get_input_arguments():
+    argument_parser = configargparse.get_argument_parser()
+    argument_parser.add(
+        '--host',
+        type=str,
+        default='minechat.dvmn.org',
+        env_var='CHAT_HOST',
+        help='The chat address.'
+    )
+    argument_parser.add(
+        '--port',
+        type=int,
+        default=5000,
+        env_var='READING_PORT',
+        help='The port number to read the chat messages.'
+    )
+    argument_parser.add(
+        '--port',
+        type=int,
+        default=5050,
+        env_var='WRITING_PORT',
+        help='The port number to write chat messages.'
+    )
+    argument_parser.add(
+        '--token',
+        type=str,
+        default='',
+        env_var='USER_TOKEN',
+        help='An existed user token the client should use to send a message.'
+    )
+    argument_parser.add(
+        '--user_name',
+        type=str,
+        default='Script Bot',
+        env_var='USER_NAME',
+        help="""
+        If user do not set the argument '--token', 
+        the script will create a new user having this name.
+        """
+    )
+    input_arguments = argument_parser.parse_args()
+    return input_arguments
+
+
+def main():
+    input_arguments = get_input_arguments()
+    user_token, user_name = input_arguments.token, input_arguments.user_name
+    chat_host, chat_port = input_arguments.host, input_arguments.port
+
+    loop = asyncio.get_event_loop()
     messages_queue = asyncio.Queue()
     sending_queue = asyncio.Queue()
     status_updates_queue = asyncio.Queue()
@@ -15,3 +65,7 @@ if __name__ == '__main__':
             status_updates_queue
         )
     )
+
+
+if __name__ == '__main__':
+    main()
