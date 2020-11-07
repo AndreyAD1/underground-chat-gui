@@ -1,7 +1,8 @@
-import tkinter as tk
 import asyncio
-from tkinter.scrolledtext import ScrolledText
 from enum import Enum
+import json
+import tkinter as tk
+from tkinter.scrolledtext import ScrolledText
 
 import aiofiles
 
@@ -115,6 +116,25 @@ async def save_messages(filepath, history_queue):
             return
 
 
+async def authorize(reader, writer, token):
+    server_response = await reader.readline()
+    logger.debug(repr(server_response.decode()))
+    logger.debug(repr(token))
+    writer.write(f'{token}\n'.encode())
+    await writer.drain()
+    server_response = await reader.readline()
+    decoded_response = server_response.decode()
+    logger.debug(repr(decoded_response))
+    try:
+        user_features = json.loads(server_response)
+    except json.JSONDecodeError:
+        logger.error(
+            f'Can not parse to JSON the server response: {decoded_response}.'
+        )
+        user_features = None
+    return user_features
+
+
 def create_status_panel(root_frame):
     status_frame = tk.Frame(root_frame)
     status_frame.pack(side="bottom", fill=tk.X)
@@ -201,6 +221,15 @@ async def draw(
     server_host = input_arguments.host
     reading_port = input_arguments.reading_port
     sending_port = input_arguments.sending_port
+    token = input_arguments.token
+
+    async with open_connection(server_host, sending_port) as (reader, writer):
+        user_features = await authorize(reader, writer, token)
+    if not user_features:
+        logger.error('Не удалось получить свойства юзера.')
+        logger.error('Проверьте токен юзера и номер порта сервера.')
+        return
+    print(f'Выполнена авторизация. Пользователь {user_features["nickname"]}')
 
     await asyncio.gather(
         update_tk(root_frame),
