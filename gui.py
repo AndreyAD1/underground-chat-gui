@@ -89,10 +89,10 @@ async def update_status_panel(status_labels, status_updates_queue):
             nickname_label['text'] = f'Имя пользователя: {msg.nickname}'
 
 
-async def add_sending_msg_to_msg_queue(sending_queue, message_queue):
+async def send_messages(host, port, sending_queue):
     while True:
         sending_message = await sending_queue.get()
-        message_queue.put_nowait(sending_message)
+        print(f'Пользователь написал: {sending_message}')
 
 
 async def read_msgs(message_queue, queue_for_history, host, port):
@@ -200,12 +200,13 @@ async def draw(
 
     server_host = input_arguments.host
     reading_port = input_arguments.reading_port
+    sending_port = input_arguments.sending_port
 
     await asyncio.gather(
         update_tk(root_frame),
         update_conversation_history(conversation_panel, messages_queue),
         update_status_panel(status_labels, status_updates_queue),
-        add_sending_msg_to_msg_queue(sending_queue, messages_queue),
+        send_messages(server_host, sending_port, sending_queue),
         read_msgs(messages_queue, history_queue, server_host, reading_port),
         save_messages(input_arguments.history_filepath, history_queue)
     )

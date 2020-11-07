@@ -21,10 +21,10 @@ def get_input_arguments():
         help='The port number to read the chat messages.'
     )
     argument_parser.add(
-        '--writing_port',
+        '--sending_port',
         type=int,
         default=5050,
-        env_var='WRITING_PORT',
+        env_var='sending_PORT',
         help='The port number to write chat messages.'
     )
     argument_parser.add(
