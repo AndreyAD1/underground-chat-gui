@@ -4,6 +4,7 @@ import json
 import re
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
+from tkinter import messagebox
 
 import aiofiles
 
@@ -91,13 +92,40 @@ async def update_status_panel(status_labels, status_updates_queue):
             nickname_label['text'] = f'Имя пользователя: {msg.nickname}'
 
 
+async def authorize(reader, writer, token):
+    server_response = await reader.readline()
+    logger.debug(repr(server_response.decode()))
+    logger.debug(repr(token))
+    writer.write(f'{token}\n'.encode())
+    await writer.drain()
+    server_response = await reader.readline()
+    decoded_response = server_response.decode()
+    logger.debug(repr(decoded_response))
+    try:
+        user_features = json.loads(server_response)
+    except json.JSONDecodeError:
+        logger.error(
+            f'Can not parse to JSON the server response: {decoded_response}.'
+        )
+        user_features = None
+    return user_features
+
+
+class InvalidToken(Exception):
+    pass
+
+
 async def send_messages(host, port, sending_queue, token):
     async with open_connection(host, port) as (reader, writer):
         user_features = await authorize(reader, writer, token)
         if not user_features:
             logger.error('Не удалось получить свойства юзера.')
-            logger.error('Проверьте токен юзера и номер порта сервера.')
-            return
+            logger.error('Проверьте токен юзера.')
+            messagebox.showerror(
+                'Неверный токен',
+                'Проверьте токен, сервер его не узнал'
+            )
+            raise InvalidToken
         user_name = user_features["nickname"]
         logger.debug(f'Выполнена авторизация. Пользователь {user_name}')
 
@@ -131,25 +159,6 @@ async def save_messages(filepath, history_queue):
         except FileNotFoundError:
             logger.error(f'Can not write messages to the file {filepath}')
             return
-
-
-async def authorize(reader, writer, token):
-    server_response = await reader.readline()
-    logger.debug(repr(server_response.decode()))
-    logger.debug(repr(token))
-    writer.write(f'{token}\n'.encode())
-    await writer.drain()
-    server_response = await reader.readline()
-    decoded_response = server_response.decode()
-    logger.debug(repr(decoded_response))
-    try:
-        user_features = json.loads(server_response)
-    except json.JSONDecodeError:
-        logger.error(
-            f'Can not parse to JSON the server response: {decoded_response}.'
-        )
-        user_features = None
-    return user_features
 
 
 def create_status_panel(root_frame):
