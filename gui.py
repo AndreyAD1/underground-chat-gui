@@ -1,6 +1,7 @@
 import asyncio
 from enum import Enum
 import json
+import re
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 
@@ -93,7 +94,17 @@ async def update_status_panel(status_labels, status_updates_queue):
 async def send_messages(host, port, sending_queue):
     while True:
         sending_message = await sending_queue.get()
-        print(f'Пользователь написал: {sending_message}')
+        logger.debug(f'Пользователь написал: {sending_message}')
+        async with open_connection(host, port) as (reader, writer):
+            server_response = await reader.readline()
+            logger.debug(repr(server_response.decode()))
+            filtered_message = re.sub(r'\n\n', '', sending_message)
+            writer.write((filtered_message + '\n').encode())
+            await writer.drain()
+            writer.write(b'\n')
+            await writer.drain()
+            server_response = await reader.readline()
+            logger.debug(repr(server_response.decode()))
 
 
 async def read_msgs(message_queue, queue_for_history, host, port):
