@@ -91,20 +91,26 @@ async def update_status_panel(status_labels, status_updates_queue):
             nickname_label['text'] = f'Имя пользователя: {msg.nickname}'
 
 
-async def send_messages(host, port, sending_queue):
-    while True:
-        sending_message = await sending_queue.get()
-        logger.debug(f'Пользователь написал: {sending_message}')
-        async with open_connection(host, port) as (reader, writer):
+async def send_messages(host, port, sending_queue, token):
+    async with open_connection(host, port) as (reader, writer):
+        user_features = await authorize(reader, writer, token)
+        if not user_features:
+            logger.error('Не удалось получить свойства юзера.')
+            logger.error('Проверьте токен юзера и номер порта сервера.')
+            return
+        user_name = user_features["nickname"]
+        logger.debug(f'Выполнена авторизация. Пользователь {user_name}')
+
+        while True:
+            sending_message = await sending_queue.get()
+            logger.debug(f'Пользователь написал: {sending_message}')
+            filtered_message = re.sub(r'\n\n', '', sending_message)
             server_response = await reader.readline()
             logger.debug(repr(server_response.decode()))
-            filtered_message = re.sub(r'\n\n', '', sending_message)
             writer.write((filtered_message + '\n').encode())
             await writer.drain()
             writer.write(b'\n')
             await writer.drain()
-            server_response = await reader.readline()
-            logger.debug(repr(server_response.decode()))
 
 
 async def read_msgs(message_queue, queue_for_history, host, port):
@@ -234,19 +240,11 @@ async def draw(
     sending_port = input_arguments.sending_port
     token = input_arguments.token
 
-    async with open_connection(server_host, sending_port) as (reader, writer):
-        user_features = await authorize(reader, writer, token)
-    if not user_features:
-        logger.error('Не удалось получить свойства юзера.')
-        logger.error('Проверьте токен юзера и номер порта сервера.')
-        return
-    print(f'Выполнена авторизация. Пользователь {user_features["nickname"]}')
-
     await asyncio.gather(
         update_tk(root_frame),
         update_conversation_history(conversation_panel, messages_queue),
         update_status_panel(status_labels, status_updates_queue),
-        send_messages(server_host, sending_port, sending_queue),
+        send_messages(server_host, sending_port, sending_queue, token),
         read_msgs(messages_queue, history_queue, server_host, reading_port),
         save_messages(input_arguments.history_filepath, history_queue)
     )
