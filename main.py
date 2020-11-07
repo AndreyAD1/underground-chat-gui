@@ -51,19 +51,18 @@ def get_input_arguments():
 def main():
     input_arguments = get_input_arguments()
 
-    loop = asyncio.get_event_loop()
     messages_queue = asyncio.Queue()
     sending_queue = asyncio.Queue()
     status_updates_queue = asyncio.Queue()
-
-    loop.run_until_complete(
-        gui.draw(
-            input_arguments,
-            messages_queue,
-            sending_queue,
-            status_updates_queue
-        )
+    main_coroutine = gui.draw(
+        input_arguments,
+        messages_queue,
+        sending_queue,
+        status_updates_queue
     )
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main_coroutine)
 
 
 if __name__ == '__main__':
