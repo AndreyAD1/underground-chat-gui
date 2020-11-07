@@ -42,6 +42,18 @@ def process_new_message(input_field, sending_queue):
     input_field.delete(0, tk.END)
 
 
+def display_message(panel, message):
+    panel['state'] = 'normal'
+    if panel.index('end-1c') != '1.0':
+        panel.insert('end', '\n')
+    panel.insert('end', message.strip())
+    # TODO сделать промотку умной, чтобы не мешала просматривать историю сообщений
+    # ScrolledText.frame
+    # ScrolledText.vbar
+    panel.yview(tk.END)
+    panel['state'] = 'disabled'
+
+
 async def update_tk(root_frame, interval=1 / 120):
     while True:
         try:
@@ -55,16 +67,7 @@ async def update_tk(root_frame, interval=1 / 120):
 async def update_conversation_history(panel, messages_queue):
     while True:
         msg = await messages_queue.get()
-
-        panel['state'] = 'normal'
-        if panel.index('end-1c') != '1.0':
-            panel.insert('end', '\n')
-        panel.insert('end', msg)
-        # TODO сделать промотку умной, чтобы не мешала просматривать историю сообщений
-        # ScrolledText.frame
-        # ScrolledText.vbar
-        panel.yview(tk.END)
-        panel['state'] = 'disabled'
+        display_message(panel, msg)
 
 
 async def update_status_panel(status_labels, status_updates_queue):
@@ -97,7 +100,7 @@ async def read_msgs(message_queue, queue_for_history, host, port):
         while True:
             received_data = await reader.readline()
             message = received_data.decode()
-            message_queue.put_nowait(message.strip())
+            message_queue.put_nowait(message)
             queue_for_history.put_nowait(message)
 
 
@@ -186,6 +189,14 @@ async def draw(
 
     conversation_panel = ScrolledText(root_frame, wrap='none')
     conversation_panel.pack(side="top", fill="both", expand=True)
+
+    history_filepath = input_arguments.history_filepath
+    try:
+        async with aiofiles.open(history_filepath, 'r') as file:
+            chat_history = await file.readlines()
+            [display_message(conversation_panel, msg) for msg in chat_history]
+    except FileNotFoundError:
+        logger.warning(f'Can not open chat history file: {history_filepath}.')
 
     server_host = input_arguments.host
     reading_port = input_arguments.reading_port
