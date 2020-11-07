@@ -44,6 +44,13 @@ def get_input_arguments():
         the script will create a new user having this name.
         """
     )
+    argument_parser.add(
+        '--history_filepath',
+        type=str,
+        default='chat_history.txt',
+        env_var='HISTORY_FILEPATH',
+        help='A file path where script should output result.'
+    )
     input_arguments = argument_parser.parse_args()
     return input_arguments
 
@@ -52,11 +59,13 @@ def main():
     input_arguments = get_input_arguments()
 
     messages_queue = asyncio.Queue()
+    history_queue = asyncio.Queue()
     sending_queue = asyncio.Queue()
     status_updates_queue = asyncio.Queue()
     main_coroutine = gui.draw(
         input_arguments,
         messages_queue,
+        history_queue,
         sending_queue,
         status_updates_queue
     )

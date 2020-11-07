@@ -3,7 +3,10 @@ import asyncio
 from tkinter.scrolledtext import ScrolledText
 from enum import Enum
 
+import aiofiles
+
 from open_connection import open_connection
+from logger import logger
 
 
 class TkAppClosed(Exception):
@@ -89,12 +92,24 @@ async def add_sending_msg_to_msg_queue(sending_queue, message_queue):
         message_queue.put_nowait(sending_message)
 
 
-async def read_msgs(message_queue, host, port):
+async def read_msgs(message_queue, queue_for_history, host, port):
     async with open_connection(host, port) as (reader, writer):
         while True:
             received_data = await reader.readline()
             message = received_data.decode()
             message_queue.put_nowait(message.strip())
+            queue_for_history.put_nowait(message)
+
+
+async def save_messages(filepath, history_queue):
+    while True:
+        new_message = await history_queue.get()
+        try:
+            async with aiofiles.open(filepath, 'a') as chat_history_file:
+                await chat_history_file.write(new_message)
+        except FileNotFoundError:
+            logger.error(f'Can not write messages to the file {filepath}')
+            return
 
 
 def create_status_panel(root_frame):
@@ -137,6 +152,7 @@ def create_status_panel(root_frame):
 async def draw(
         input_arguments,
         messages_queue,
+        history_queue,
         sending_queue,
         status_updates_queue
 ):
@@ -162,7 +178,10 @@ async def draw(
 
     send_button = tk.Button(input_frame)
     send_button["text"] = "Отправить"
-    send_button["command"] = lambda: process_new_message(input_field, sending_queue)
+    send_button["command"] = lambda: process_new_message(
+        input_field,
+        sending_queue
+    )
     send_button.pack(side="left")
 
     conversation_panel = ScrolledText(root_frame, wrap='none')
@@ -176,5 +195,6 @@ async def draw(
         update_conversation_history(conversation_panel, messages_queue),
         update_status_panel(status_labels, status_updates_queue),
         add_sending_msg_to_msg_queue(sending_queue, messages_queue),
-        read_msgs(messages_queue, server_host, reading_port)
+        read_msgs(messages_queue, history_queue, server_host, reading_port),
+        save_messages(input_arguments.history_filepath, history_queue)
     )
