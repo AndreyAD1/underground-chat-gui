@@ -1,6 +1,7 @@
 import asyncio
-
+import logging
 import time
+
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 
@@ -106,7 +107,21 @@ def create_status_panel(root_frame):
     return nickname_label, status_read_label, status_write_label
 
 
+class WatchdogFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        return {record.created}
+
+
 async def watch_for_connection(watchdog_queue):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+
+    console = logging.StreamHandler()
+    formatter = WatchdogFormatter('[%(asctime)s]:Connection is alive:%(message)s')
+    console.setFormatter(formatter)
+    logger.addHandler(console)
     while True:
         connection_message = await watchdog_queue.get()
         print(int(time.time()), 'Connection is alive.', connection_message)
