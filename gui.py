@@ -155,18 +155,26 @@ async def draw(
     reading_port = input_arguments.reading_port
     sending_port = input_arguments.sending_port
     token = input_arguments.token
+    sending_coroutine = send_messages(
+        server_host,
+        sending_port,
+        sending_queue,
+        token,
+        status_updates_queue
+    )
+    reading_coroutine = read_msgs(
+        messages_queue,
+        history_queue,
+        server_host,
+        reading_port,
+        status_updates_queue
+    )
 
     await asyncio.gather(
         update_tk(root_frame),
         update_conversation_history(conversation_panel, messages_queue),
         update_status_panel(status_labels, status_updates_queue),
-        send_messages(
-            server_host,
-            sending_port,
-            sending_queue,
-            token,
-            status_updates_queue
-        ),
-        read_msgs(messages_queue, history_queue, server_host, reading_port),
+        sending_coroutine,
+        reading_coroutine,
         save_messages(input_arguments.history_filepath, history_queue)
     )

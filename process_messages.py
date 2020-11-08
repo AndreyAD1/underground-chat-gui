@@ -6,7 +6,8 @@ from tkinter import messagebox
 
 from logger import logger
 from open_connection import open_connection
-from statuses import NicknameReceived
+from statuses import NicknameReceived, ReadConnectionStateChanged
+from statuses import SendingConnectionStateChanged
 
 
 class InvalidToken(Exception):
@@ -34,6 +35,9 @@ async def authorize(reader, writer, token):
 
 async def send_messages(host, port, sending_queue, token, status_msgs_queue):
     async with open_connection(host, port) as (reader, writer):
+        status_msgs_queue.put_nowait(
+            SendingConnectionStateChanged. ESTABLISHED
+        )
         user_features = await authorize(reader, writer, token)
         if not user_features:
             logger.error('Не удалось получить свойства юзера.')
@@ -59,13 +63,20 @@ async def send_messages(host, port, sending_queue, token, status_msgs_queue):
             await writer.drain()
 
 
-async def read_msgs(message_queue, queue_for_history, host, port):
+async def read_msgs(
+        message_queue,
+        history_queue,
+        host,
+        port,
+        status_updates_queue
+):
     async with open_connection(host, port) as (reader, writer):
+        status_updates_queue.put_nowait(ReadConnectionStateChanged.ESTABLISHED)
         while True:
             received_data = await reader.readline()
             message = received_data.decode()
             message_queue.put_nowait(message)
-            queue_for_history.put_nowait(message)
+            history_queue.put_nowait(message)
 
 
 async def save_messages(filepath, history_queue):
