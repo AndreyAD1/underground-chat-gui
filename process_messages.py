@@ -6,6 +6,7 @@ from tkinter import messagebox
 
 from logger import logger
 from open_connection import open_connection
+from statuses import NicknameReceived
 
 
 class InvalidToken(Exception):
@@ -31,7 +32,7 @@ async def authorize(reader, writer, token):
     return user_features
 
 
-async def send_messages(host, port, sending_queue, token):
+async def send_messages(host, port, sending_queue, token, status_msgs_queue):
     async with open_connection(host, port) as (reader, writer):
         user_features = await authorize(reader, writer, token)
         if not user_features:
@@ -44,6 +45,7 @@ async def send_messages(host, port, sending_queue, token):
             raise InvalidToken
         user_name = user_features["nickname"]
         logger.debug(f'Выполнена авторизация. Пользователь {user_name}')
+        status_msgs_queue.put_nowait(NicknameReceived(user_name))
 
         while True:
             sending_message = await sending_queue.get()

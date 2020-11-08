@@ -1,5 +1,4 @@
 import asyncio
-from enum import Enum
 
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
@@ -8,33 +7,12 @@ import aiofiles
 
 from logger import logger
 from process_messages import read_msgs, send_messages, save_messages
+from statuses import NicknameReceived, ReadConnectionStateChanged
+from statuses import SendingConnectionStateChanged
 
 
 class TkAppClosed(Exception):
     pass
-
-
-class ReadConnectionStateChanged(Enum):
-    INITIATED = 'устанавливаем соединение'
-    ESTABLISHED = 'соединение установлено'
-    CLOSED = 'соединение закрыто'
-
-    def __str__(self):
-        return str(self.value)
-
-
-class SendingConnectionStateChanged(Enum):
-    INITIATED = 'устанавливаем соединение'
-    ESTABLISHED = 'соединение установлено'
-    CLOSED = 'соединение закрыто'
-
-    def __str__(self):
-        return str(self.value)
-
-
-class NicknameReceived:
-    def __init__(self, nickname):
-        self.nickname = nickname
 
 
 def process_new_message(input_field, sending_queue):
@@ -182,7 +160,13 @@ async def draw(
         update_tk(root_frame),
         update_conversation_history(conversation_panel, messages_queue),
         update_status_panel(status_labels, status_updates_queue),
-        send_messages(server_host, sending_port, sending_queue, token),
+        send_messages(
+            server_host,
+            sending_port,
+            sending_queue,
+            token,
+            status_updates_queue
+        ),
         read_msgs(messages_queue, history_queue, server_host, reading_port),
         save_messages(input_arguments.history_filepath, history_queue)
     )
