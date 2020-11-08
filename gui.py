@@ -1,5 +1,6 @@
 import asyncio
 
+import time
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 
@@ -105,12 +106,19 @@ def create_status_panel(root_frame):
     return nickname_label, status_read_label, status_write_label
 
 
+async def watch_for_connection(watchdog_queue):
+    while True:
+        connection_message = await watchdog_queue.get()
+        print(int(time.time()), 'Connection is alive.', connection_message)
+
+
 async def draw(
         input_arguments,
         messages_queue,
         history_queue,
         sending_queue,
-        status_updates_queue
+        status_updates_queue,
+        watchdog_queue
 ):
     root = tk.Tk()
 
@@ -152,7 +160,6 @@ async def draw(
         logger.warning(f'Can not open chat history file: {history_filepath}.')
 
     server_host = input_arguments.host
-    reading_port = input_arguments.reading_port
     sending_port = input_arguments.sending_port
     token = input_arguments.token
     sending_coroutine = send_messages(
@@ -160,14 +167,17 @@ async def draw(
         sending_port,
         sending_queue,
         token,
-        status_updates_queue
+        status_updates_queue,
+        watchdog_queue
     )
+    reading_port = input_arguments.reading_port
     reading_coroutine = read_msgs(
         messages_queue,
         history_queue,
         server_host,
         reading_port,
-        status_updates_queue
+        status_updates_queue,
+        watchdog_queue
     )
 
     await asyncio.gather(
@@ -176,5 +186,6 @@ async def draw(
         update_status_panel(status_labels, status_updates_queue),
         sending_coroutine,
         reading_coroutine,
-        save_messages(input_arguments.history_filepath, history_queue)
+        save_messages(input_arguments.history_filepath, history_queue),
+        watch_for_connection(watchdog_queue)
     )

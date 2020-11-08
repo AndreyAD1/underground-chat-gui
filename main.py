@@ -62,12 +62,14 @@ def main():
     history_queue = asyncio.Queue()
     sending_queue = asyncio.Queue()
     status_updates_queue = asyncio.Queue()
+    watchdog_queue = asyncio.Queue()
     main_coroutine = gui.draw(
         input_arguments,
         messages_queue,
         history_queue,
         sending_queue,
-        status_updates_queue
+        status_updates_queue,
+        watchdog_queue
     )
 
     loop = asyncio.get_event_loop()

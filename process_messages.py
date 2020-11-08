@@ -33,7 +33,14 @@ async def authorize(reader, writer, token):
     return user_features
 
 
-async def send_messages(host, port, sending_queue, token, status_msgs_queue):
+async def send_messages(
+        host,
+        port,
+        sending_queue,
+        token,
+        status_msgs_queue,
+        watchdog_queue
+):
     async with open_connection(host, port) as (reader, writer):
         status_msgs_queue.put_nowait(
             SendingConnectionStateChanged. ESTABLISHED
@@ -61,6 +68,7 @@ async def send_messages(host, port, sending_queue, token, status_msgs_queue):
             await writer.drain()
             writer.write(b'\n')
             await writer.drain()
+            watchdog_queue.put_nowait('Message sent')
 
 
 async def read_msgs(
@@ -68,7 +76,8 @@ async def read_msgs(
         history_queue,
         host,
         port,
-        status_updates_queue
+        status_updates_queue,
+        watchdog_queue
 ):
     async with open_connection(host, port) as (reader, writer):
         status_updates_queue.put_nowait(ReadConnectionStateChanged.ESTABLISHED)
@@ -77,6 +86,7 @@ async def read_msgs(
             message = received_data.decode()
             message_queue.put_nowait(message)
             history_queue.put_nowait(message)
+            watchdog_queue.put_nowait('A new message in the chat.')
 
 
 async def save_messages(filepath, history_queue):
