@@ -14,10 +14,6 @@ class TkAppClosed(Exception):
     pass
 
 
-class InvalidToken(Exception):
-    pass
-
-
 class ReadConnectionStateChanged(Enum):
     INITIATED = 'устанавливаем соединение'
     ESTABLISHED = 'соединение установлено'

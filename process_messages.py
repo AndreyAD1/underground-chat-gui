@@ -8,6 +8,10 @@ from logger import logger
 from open_connection import open_connection
 
 
+class InvalidToken(Exception):
+    pass
+
+
 async def authorize(reader, writer, token):
     server_response = await reader.readline()
     logger.debug(repr(server_response.decode()))
