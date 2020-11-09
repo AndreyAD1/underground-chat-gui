@@ -43,7 +43,7 @@ async def send_messages(
 ):
     async with open_connection(host, port) as (reader, writer):
         status_msgs_queue.put_nowait(
-            SendingConnectionStateChanged. ESTABLISHED
+            SendingConnectionStateChanged.ESTABLISHED
         )
         user_features = await authorize(reader, writer, token)
         if not user_features:
@@ -57,6 +57,7 @@ async def send_messages(
         user_name = user_features["nickname"]
         logger.debug(f'Выполнена авторизация. Пользователь {user_name}')
         status_msgs_queue.put_nowait(NicknameReceived(user_name))
+        watchdog_queue.put_nowait('Authorization done')
 
         while True:
             sending_message = await sending_queue.get()
@@ -86,7 +87,7 @@ async def read_msgs(
             message = received_data.decode()
             message_queue.put_nowait(message)
             history_queue.put_nowait(message)
-            watchdog_queue.put_nowait('A new message in the chat.')
+            watchdog_queue.put_nowait('A new message in the chat')
 
 
 async def save_messages(filepath, history_queue):
