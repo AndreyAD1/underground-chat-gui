@@ -4,6 +4,7 @@ import logging
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 
+from async_timeout import timeout
 import aiofiles
 
 from logger import logger
@@ -115,12 +116,19 @@ async def watch_for_connection(watchdog_queue):
     watchdog_logger = logging.getLogger(__name__)
     watchdog_logger.setLevel(logging.DEBUG)
     console = logging.StreamHandler()
-    formatter = WatchdogFormatter('[%(asctime)s] Connection is alive. %(message)s')
+    formatter = WatchdogFormatter('[%(asctime)s] %(message)s')
     console.setFormatter(formatter)
     watchdog_logger.addHandler(console)
     while True:
-        connection_message = await watchdog_queue.get()
-        watchdog_logger.debug(connection_message)
+        try:
+            async with timeout(1) as timeout_manager:
+                connection_message = await watchdog_queue.get()
+                report = f'Connection is alive. Source: {connection_message}'
+                watchdog_logger.debug(report)
+        except asyncio.TimeoutError:
+            if not timeout_manager.expired:
+                raise
+            watchdog_logger.debug('1s timeout is elapsed')
 
 
 async def draw(
