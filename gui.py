@@ -4,6 +4,7 @@ import logging
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 
+from anyio import create_task_group
 from async_timeout import timeout
 import aiofiles
 
@@ -129,7 +130,46 @@ async def watch_for_connection(watchdog_queue):
             if not timeout_manager.expired:
                 raise
             watchdog_logger.debug('1s timeout is elapsed')
-            raise ConnectionError from ex
+            # raise ConnectionError from ex
+
+
+async def handle_connection(
+        input_arguments,
+        messages_queue,
+        history_queue,
+        sending_queue,
+        status_updates_queue,
+        watchdog_queue
+):
+    server_host = input_arguments.host
+    sending_port = input_arguments.sending_port
+    token = input_arguments.token
+    reading_port = input_arguments.reading_port
+    while True:
+        async with create_task_group() as task_group:
+            await task_group.spawn(
+                read_msgs,
+                messages_queue,
+                history_queue,
+                server_host,
+                reading_port,
+                status_updates_queue,
+                watchdog_queue
+            )
+            await task_group.spawn(
+                send_messages,
+                server_host,
+                sending_port,
+                sending_queue,
+                token,
+                status_updates_queue,
+                watchdog_queue
+            )
+            await task_group.spawn(watch_for_connection, watchdog_queue)
+            # try:
+            #     await task_group.spawn(watch_for_connection, watchdog_queue)
+            # except ConnectionError:
+            #     continue
 
 
 async def draw(
@@ -179,23 +219,11 @@ async def draw(
     except FileNotFoundError:
         logger.warning(f'Can not open chat history file: {history_filepath}.')
 
-    server_host = input_arguments.host
-    sending_port = input_arguments.sending_port
-    token = input_arguments.token
-    sending_coroutine = send_messages(
-        server_host,
-        sending_port,
-        sending_queue,
-        token,
-        status_updates_queue,
-        watchdog_queue
-    )
-    reading_port = input_arguments.reading_port
-    reading_coroutine = read_msgs(
+    connection_handling_coroutine = handle_connection(
+        input_arguments,
         messages_queue,
         history_queue,
-        server_host,
-        reading_port,
+        sending_queue,
         status_updates_queue,
         watchdog_queue
     )
@@ -204,8 +232,6 @@ async def draw(
         update_tk(root_frame),
         update_conversation_history(conversation_panel, messages_queue),
         update_status_panel(status_labels, status_updates_queue),
-        sending_coroutine,
-        reading_coroutine,
+        connection_handling_coroutine,
         save_messages(input_arguments.history_filepath, history_queue),
-        watch_for_connection(watchdog_queue)
     )
