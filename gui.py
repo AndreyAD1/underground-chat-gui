@@ -125,10 +125,11 @@ async def watch_for_connection(watchdog_queue):
                 connection_message = await watchdog_queue.get()
                 report = f'Connection is alive. Source: {connection_message}'
                 watchdog_logger.debug(report)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as ex:
             if not timeout_manager.expired:
                 raise
             watchdog_logger.debug('1s timeout is elapsed')
+            raise ConnectionError from ex
 
 
 async def draw(
