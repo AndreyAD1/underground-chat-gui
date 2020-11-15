@@ -42,6 +42,7 @@ async def send_messages(
         status_msgs_queue,
         watchdog_queue
 ):
+    status_msgs_queue.put_nowait(SendingConnectionStateChanged.INITIATED)
     async with open_connection(host, port) as (reader, writer):
         status_msgs_queue.put_nowait(
             SendingConnectionStateChanged.ESTABLISHED
@@ -74,6 +75,7 @@ async def send_messages(
                 watchdog_queue.put_nowait('Message sent')
         except asyncio.CancelledError:
             logger.warning('Stop the coroutine "send_messages"')
+            status_msgs_queue.put_nowait(SendingConnectionStateChanged.CLOSED)
             raise
 
 
@@ -85,6 +87,7 @@ async def read_msgs(
         status_updates_queue,
         watchdog_queue
 ):
+    status_updates_queue.put_nowait(ReadConnectionStateChanged.INITIATED)
     async with open_connection(host, port) as (reader, writer):
         status_updates_queue.put_nowait(ReadConnectionStateChanged.ESTABLISHED)
         try:
@@ -96,6 +99,7 @@ async def read_msgs(
                 watchdog_queue.put_nowait('A new message in the chat')
         except asyncio.CancelledError:
             logger.warning('Stop the coroutine "read_msgs"')
+            status_updates_queue.put_nowait(ReadConnectionStateChanged.CLOSED)
             raise
 
 
