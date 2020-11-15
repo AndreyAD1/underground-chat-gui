@@ -1,15 +1,14 @@
 import asyncio
-import logging
 
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 
 from anyio import create_task_group
-from async_timeout import timeout
 import aiofiles
 
 from logger import logger
 from process_messages import read_msgs, send_messages, save_messages
+from process_messages import watch_for_connection
 from statuses import NicknameReceived, ReadConnectionStateChanged
 from statuses import SendingConnectionStateChanged
 
@@ -108,35 +107,6 @@ def create_status_panel(root_frame):
     return nickname_label, status_read_label, status_write_label
 
 
-class WatchdogFormatter(logging.Formatter):
-    def formatTime(self, record, datefmt=None):
-        return int(record.created)
-
-
-async def watch_for_connection(watchdog_queue):
-    watchdog_logger = logging.getLogger(__name__)
-    watchdog_logger.setLevel(logging.DEBUG)
-    for handler in watchdog_logger.handlers:
-        watchdog_logger.removeHandler(handler)
-
-    console = logging.StreamHandler()
-    formatter = WatchdogFormatter('[%(asctime)s] %(message)s')
-    console.setFormatter(formatter)
-    watchdog_logger.addHandler(console)
-    logger.debug('Launch the new watchdog')
-    while True:
-        try:
-            async with timeout(1) as timeout_manager:
-                connection_message = await watchdog_queue.get()
-                report = f'Connection is alive. Source: {connection_message}'
-                watchdog_logger.debug(report)
-        except asyncio.TimeoutError:
-            if not timeout_manager.expired:
-                raise
-            watchdog_logger.debug('1s timeout is elapsed')
-            raise ConnectionError
-
-
 async def handle_connection(
         input_arguments,
         messages_queue,
@@ -170,7 +140,12 @@ async def handle_connection(
                     status_updates_queue,
                     watchdog_queue
                 )
-                await task_group.spawn(watch_for_connection, watchdog_queue)
+                await task_group.spawn(
+                    watch_for_connection,
+                    server_host,
+                    sending_port,
+                    token
+                )
         except ConnectionError:
             continue
 
