@@ -113,7 +113,6 @@ async def handle_connection(
         history_queue,
         sending_queue,
         status_updates_queue,
-        watchdog_queue
 ):
     server_host = input_arguments.host
     sending_port = input_arguments.sending_port
@@ -129,7 +128,6 @@ async def handle_connection(
                     server_host,
                     reading_port,
                     status_updates_queue,
-                    watchdog_queue
                 )
                 await task_group.spawn(
                     send_messages,
@@ -138,7 +136,6 @@ async def handle_connection(
                     sending_queue,
                     token,
                     status_updates_queue,
-                    watchdog_queue
                 )
                 await task_group.spawn(
                     watch_for_connection,
@@ -156,7 +153,6 @@ async def draw(
         history_queue,
         sending_queue,
         status_updates_queue,
-        watchdog_queue
 ):
     root = tk.Tk()
 
@@ -203,7 +199,6 @@ async def draw(
         history_queue,
         sending_queue,
         status_updates_queue,
-        watchdog_queue
     )
 
     await asyncio.gather(

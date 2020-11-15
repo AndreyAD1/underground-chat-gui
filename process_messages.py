@@ -56,7 +56,7 @@ async def watch_for_connection(host, port, token):
         await authorize(reader, writer, token)
         while True:
             try:
-                async with timeout(4) as timeout_manager:
+                async with timeout(1) as timeout_manager:
                     writer.write(b'\n')
                     await writer.drain()
                     await reader.readline()
@@ -74,7 +74,6 @@ async def send_messages(
         sending_queue,
         token,
         status_msgs_queue,
-        watchdog_queue
 ):
     status_msgs_queue.put_nowait(SendingConnectionStateChanged.INITIATED)
     async with open_connection(host, port) as (reader, writer):
@@ -93,7 +92,6 @@ async def send_messages(
         user_name = user_features["nickname"]
         logger.debug(f'Выполнена авторизация. Пользователь {user_name}')
         status_msgs_queue.put_nowait(NicknameReceived(user_name))
-        watchdog_queue.put_nowait('Authorization done')
 
         try:
             while True:
@@ -106,7 +104,6 @@ async def send_messages(
                 await writer.drain()
                 writer.write(b'\n')
                 await writer.drain()
-                watchdog_queue.put_nowait('Message sent')
         except asyncio.CancelledError:
             logger.warning('Stop the coroutine "send_messages"')
             status_msgs_queue.put_nowait(SendingConnectionStateChanged.CLOSED)
@@ -119,7 +116,6 @@ async def read_msgs(
         host,
         port,
         status_updates_queue,
-        watchdog_queue
 ):
     status_updates_queue.put_nowait(ReadConnectionStateChanged.INITIATED)
     async with open_connection(host, port) as (reader, writer):
@@ -130,7 +126,6 @@ async def read_msgs(
                 message = received_data.decode()
                 message_queue.put_nowait(message)
                 history_queue.put_nowait(message)
-                watchdog_queue.put_nowait('A new message in the chat')
         except asyncio.CancelledError:
             logger.warning('Stop the coroutine "read_msgs"')
             status_updates_queue.put_nowait(ReadConnectionStateChanged.CLOSED)
