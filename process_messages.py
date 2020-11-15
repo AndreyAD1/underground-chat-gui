@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 
@@ -59,17 +60,21 @@ async def send_messages(
         status_msgs_queue.put_nowait(NicknameReceived(user_name))
         watchdog_queue.put_nowait('Authorization done')
 
-        while True:
-            sending_message = await sending_queue.get()
-            logger.debug(f'Пользователь написал: {sending_message}')
-            filtered_message = re.sub(r'\n\n', '', sending_message)
-            server_response = await reader.readline()
-            logger.debug(repr(server_response.decode()))
-            writer.write((filtered_message + '\n').encode())
-            await writer.drain()
-            writer.write(b'\n')
-            await writer.drain()
-            watchdog_queue.put_nowait('Message sent')
+        try:
+            while True:
+                sending_message = await sending_queue.get()
+                logger.debug(f'Пользователь написал: {sending_message}')
+                filtered_message = re.sub(r'\n\n', '', sending_message)
+                server_response = await reader.readline()
+                logger.debug(repr(server_response.decode()))
+                writer.write((filtered_message + '\n').encode())
+                await writer.drain()
+                writer.write(b'\n')
+                await writer.drain()
+                watchdog_queue.put_nowait('Message sent')
+        except asyncio.CancelledError:
+            logger.warning('Stop the coroutine "send_messages"')
+            raise
 
 
 async def read_msgs(
@@ -82,12 +87,16 @@ async def read_msgs(
 ):
     async with open_connection(host, port) as (reader, writer):
         status_updates_queue.put_nowait(ReadConnectionStateChanged.ESTABLISHED)
-        while True:
-            received_data = await reader.readline()
-            message = received_data.decode()
-            message_queue.put_nowait(message)
-            history_queue.put_nowait(message)
-            watchdog_queue.put_nowait('A new message in the chat')
+        try:
+            while True:
+                received_data = await reader.readline()
+                message = received_data.decode()
+                message_queue.put_nowait(message)
+                history_queue.put_nowait(message)
+                watchdog_queue.put_nowait('A new message in the chat')
+        except asyncio.CancelledError:
+            logger.warning('Stop the coroutine "read_msgs"')
+            raise
 
 
 async def save_messages(filepath, history_queue):

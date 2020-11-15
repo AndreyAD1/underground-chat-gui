@@ -126,11 +126,14 @@ async def watch_for_connection(watchdog_queue):
                 connection_message = await watchdog_queue.get()
                 report = f'Connection is alive. Source: {connection_message}'
                 watchdog_logger.debug(report)
-        except asyncio.TimeoutError as ex:
+        except asyncio.TimeoutError:
             if not timeout_manager.expired:
                 raise
             watchdog_logger.debug('1s timeout is elapsed')
-            # raise ConnectionError from ex
+            raise ConnectionError
+        except asyncio.CancelledError:
+            watchdog_logger.debug('Sto[p the coroutine watch_for_connection.')
+            raise
 
 
 async def handle_connection(
@@ -146,30 +149,29 @@ async def handle_connection(
     token = input_arguments.token
     reading_port = input_arguments.reading_port
     while True:
-        async with create_task_group() as task_group:
-            await task_group.spawn(
-                read_msgs,
-                messages_queue,
-                history_queue,
-                server_host,
-                reading_port,
-                status_updates_queue,
-                watchdog_queue
-            )
-            await task_group.spawn(
-                send_messages,
-                server_host,
-                sending_port,
-                sending_queue,
-                token,
-                status_updates_queue,
-                watchdog_queue
-            )
-            await task_group.spawn(watch_for_connection, watchdog_queue)
-            # try:
-            #     await task_group.spawn(watch_for_connection, watchdog_queue)
-            # except ConnectionError:
-            #     continue
+        try:
+            async with create_task_group() as task_group:
+                await task_group.spawn(
+                    read_msgs,
+                    messages_queue,
+                    history_queue,
+                    server_host,
+                    reading_port,
+                    status_updates_queue,
+                    watchdog_queue
+                )
+                await task_group.spawn(
+                    send_messages,
+                    server_host,
+                    sending_port,
+                    sending_queue,
+                    token,
+                    status_updates_queue,
+                    watchdog_queue
+                )
+                await task_group.spawn(watch_for_connection, watchdog_queue)
+        except ConnectionError:
+            continue
 
 
 async def draw(
