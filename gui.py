@@ -116,10 +116,14 @@ class WatchdogFormatter(logging.Formatter):
 async def watch_for_connection(watchdog_queue):
     watchdog_logger = logging.getLogger(__name__)
     watchdog_logger.setLevel(logging.DEBUG)
+    for handler in watchdog_logger.handlers:
+        watchdog_logger.removeHandler(handler)
+
     console = logging.StreamHandler()
     formatter = WatchdogFormatter('[%(asctime)s] %(message)s')
     console.setFormatter(formatter)
     watchdog_logger.addHandler(console)
+    logger.debug('Launch the new watchdog')
     while True:
         try:
             async with timeout(1) as timeout_manager:
@@ -131,9 +135,6 @@ async def watch_for_connection(watchdog_queue):
                 raise
             watchdog_logger.debug('1s timeout is elapsed')
             raise ConnectionError
-        except asyncio.CancelledError:
-            watchdog_logger.debug('Sto[p the coroutine watch_for_connection.')
-            raise
 
 
 async def handle_connection(
