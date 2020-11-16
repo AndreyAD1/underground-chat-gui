@@ -1,7 +1,9 @@
 import asyncio
-import gui
 
+from anyio import run
 import configargparse
+
+from gui import draw
 
 
 def get_input_arguments():
@@ -62,7 +64,7 @@ def main():
     history_queue = asyncio.Queue()
     sending_queue = asyncio.Queue()
     status_updates_queue = asyncio.Queue()
-    main_coroutine = gui.draw(
+    main_coroutine = draw(
         input_arguments,
         messages_queue,
         history_queue,

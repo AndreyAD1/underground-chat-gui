@@ -193,18 +193,24 @@ async def draw(
     except FileNotFoundError:
         logger.warning(f'Can not open chat history file: {history_filepath}.')
 
-    connection_handling_coroutine = handle_connection(
-        input_arguments,
-        messages_queue,
-        history_queue,
-        sending_queue,
-        status_updates_queue,
-    )
-
-    await asyncio.gather(
-        update_tk(root_frame),
-        update_conversation_history(conversation_panel, messages_queue),
-        update_status_panel(status_labels, status_updates_queue),
-        connection_handling_coroutine,
-        save_messages(input_arguments.history_filepath, history_queue),
-    )
+    async with create_task_group() as task_group:
+        await task_group.spawn(update_tk, root_frame)
+        await task_group.spawn(
+            update_conversation_history,
+            conversation_panel,
+            messages_queue
+        )
+        await task_group.spawn(
+            update_status_panel,
+            status_labels,
+            status_updates_queue
+        )
+        await task_group.spawn(
+            handle_connection,
+            input_arguments,
+            messages_queue,
+            history_queue,
+            sending_queue,
+            status_updates_queue
+        )
+        await task_group.spawn(save_messages, history_filepath, history_queue)
