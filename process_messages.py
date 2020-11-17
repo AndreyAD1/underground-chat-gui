@@ -105,7 +105,7 @@ async def send_messages(
                 writer.write(b'\n')
                 await writer.drain()
         except asyncio.CancelledError:
-            logger.warning('Stop the coroutine "send_messages"')
+            logger.debug('Stop the coroutine "send_messages"')
             status_msgs_queue.put_nowait(SendingConnectionStateChanged.CLOSED)
             raise
 
@@ -127,7 +127,7 @@ async def read_msgs(
                 message_queue.put_nowait(message)
                 history_queue.put_nowait(message)
         except asyncio.CancelledError:
-            logger.warning('Stop the coroutine "read_msgs"')
+            logger.debug('Stop the coroutine "read_msgs"')
             status_updates_queue.put_nowait(ReadConnectionStateChanged.CLOSED)
             raise
 

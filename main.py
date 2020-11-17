@@ -1,9 +1,8 @@
 import asyncio
 
-from anyio import run
 import configargparse
 
-from gui import draw
+from gui import draw, TkAppClosed
 
 
 def get_input_arguments():
@@ -58,22 +57,25 @@ def get_input_arguments():
 
 
 def main():
-    input_arguments = get_input_arguments()
+    try:
+        input_arguments = get_input_arguments()
 
-    messages_queue = asyncio.Queue()
-    history_queue = asyncio.Queue()
-    sending_queue = asyncio.Queue()
-    status_updates_queue = asyncio.Queue()
-    main_coroutine = draw(
-        input_arguments,
-        messages_queue,
-        history_queue,
-        sending_queue,
-        status_updates_queue,
-    )
+        messages_queue = asyncio.Queue()
+        history_queue = asyncio.Queue()
+        sending_queue = asyncio.Queue()
+        status_updates_queue = asyncio.Queue()
+        main_coroutine = draw(
+            input_arguments,
+            messages_queue,
+            history_queue,
+            sending_queue,
+            status_updates_queue,
+        )
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main_coroutine)
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main_coroutine)
+    except (KeyboardInterrupt, TkAppClosed):
+        return
 
 
 if __name__ == '__main__':
