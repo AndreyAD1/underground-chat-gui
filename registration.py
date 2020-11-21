@@ -1,6 +1,6 @@
 import asyncio
 import json
-from logger import logger
+import logging
 import re
 import socket
 import tkinter as tk
@@ -10,6 +10,8 @@ from anyio import create_task_group
 
 from gui import TkAppClosed
 from gui import update_conversation_history as update_scroll_panel, update_tk
+
+logger = logging.getLogger(__file__)
 
 
 def process_button_click(
@@ -26,19 +28,17 @@ def process_button_click(
     username_entry.delete(0, tk.END)
 
 
-async def register(request_info_queue, new_user_hash_queue, log_queue):
+async def register(request_info_queue, new_user_hash_queue):
     while True:
         host, port, user_name = await request_info_queue.get()
         server_address = f'{host}:{port}'
         log_msg = f'Установка соединения с сервером {server_address}'
         logger.debug(log_msg)
-        log_queue.put_nowait(log_msg)
         try:
             reader, writer = await asyncio.open_connection(host, port)
         except socket.gaierror:
             log_msg = f'ОШИБКА. Нет соединения с сервером {server_address}'
             logger.error(log_msg)
-            log_queue.put_nowait(log_msg)
             new_user_hash_queue.put_nowait('ОШИБКА. Нет соединения с сервером')
             continue
 
@@ -58,7 +58,6 @@ async def register(request_info_queue, new_user_hash_queue, log_queue):
 
         server_response = await reader.readline()
         logger.debug(repr(server_response.decode()))
-        log_queue.put_nowait(repr(server_response.decode()))
         user_features = json.loads(server_response)
         try:
             user_token = user_features['account_hash']
@@ -111,7 +110,6 @@ async def draw(request_info_queue, new_user_hash_queue, log_queue):
             register,
             request_info_queue,
             new_user_hash_queue,
-            log_queue
         )
         await task_group.spawn(
             update_hash_label,
@@ -121,11 +119,27 @@ async def draw(request_info_queue, new_user_hash_queue, log_queue):
         await task_group.spawn(update_scroll_panel, log_panel, log_queue)
 
 
+class TkinterLogHandler(logging.Handler):
+    def __init__(self, log_queue):
+        super().__init__()
+        self.log_queue = log_queue
+
+    def emit(self, record):
+        self.log_queue.put_nowait(self.format(record))
+
+
 def main():
+    logging.basicConfig(level=logging.ERROR)
+    logger.setLevel(logging.DEBUG)
+    log_queue = asyncio.Queue()
+    tkinter_log_handler = TkinterLogHandler(log_queue)
+    formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+    tkinter_log_handler.setFormatter(formatter)
+    logger.addHandler(tkinter_log_handler)
+
+    request_info_queue = asyncio.Queue()
+    new_user_hash_queue = asyncio.Queue()
     try:
-        request_info_queue = asyncio.Queue()
-        new_user_hash_queue = asyncio.Queue()
-        log_queue = asyncio.Queue()
         main_coroutine = draw(
             request_info_queue,
             new_user_hash_queue,
