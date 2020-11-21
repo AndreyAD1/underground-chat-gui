@@ -24,31 +24,42 @@ def process_button_click(
     username.delete(0, tk.END)
 
 
-async def register(host, port, user_name):
-    async with open_connection(host, port) as (reader, writer):
-        server_response = await reader.readline()
-        logger.debug(repr(server_response.decode()))
+async def register(request_info_queue, new_user_hash_queue):
+    while True:
+        host, port, user_name = await request_info_queue.get()
+        async with open_connection(host, port) as (reader, writer):
+            server_response = await reader.readline()
+            logger.debug(repr(server_response.decode()))
 
-        writer.write(b'\n')
-        await writer.drain()
-        server_response = await reader.readline()
-        logger.debug(repr(server_response.decode()))
+            writer.write(b'\n')
+            await writer.drain()
+            server_response = await reader.readline()
+            logger.debug(repr(server_response.decode()))
 
-        filtered_nick = re.sub(r'(\\+n|\n|\\+)', '', user_name)
-        message_to_send = f'{filtered_nick}\n'
-        logger.debug(repr(message_to_send))
-        writer.write(message_to_send.encode())
-        await writer.drain()
+            filtered_nick = re.sub(r'(\\+n|\n|\\+)', '', user_name)
+            message_to_send = f'{filtered_nick}\n'
+            logger.debug(repr(message_to_send))
+            writer.write(message_to_send.encode())
+            await writer.drain()
 
-        server_response = await reader.readline()
-        logger.debug(repr(server_response.decode()))
-        user_features = json.loads(server_response)
-        try:
-            user_token = user_features['account_hash']
-        except (AttributeError, KeyError):
-            user_token = None
+            server_response = await reader.readline()
+            logger.debug(repr(server_response.decode()))
+            user_features = json.loads(server_response)
+            try:
+                user_token = user_features['account_hash']
+            except (AttributeError, KeyError):
+                user_token = None
 
-    return user_token
+        new_user_hash_queue.put_nowait(user_token)
+
+
+async def update_hash_label(user_hash_label, new_user_hash_queue):
+    while True:
+        user_hash = await new_user_hash_queue.get()
+        if user_hash is None:
+            # process the error
+            pass
+        user_hash_label['text'] = user_hash
 
 
 async def draw(request_info_queue, new_user_hash_queue):
@@ -61,8 +72,7 @@ async def draw(request_info_queue, new_user_hash_queue):
     port_entry = tk.Entry(width=20)
     user_name_entry = tk.Entry(width=20)
     sign_up_button = tk.Button(text='Регистрация')
-    messages_window = ScrolledText(root_frame, wrap='none')
-    user_hash = tk.Label(width=20, bg='black', fg='white')
+    user_hash_label = tk.Label(width=20, bg='black', fg='white')
 
     sign_up_button.bind(
         'Sign Up',
@@ -78,11 +88,15 @@ async def draw(request_info_queue, new_user_hash_queue):
     port_entry.pack()
     user_name_entry.pack()
     sign_up_button.pack()
-    messages_window.pack()
-    user_hash.pack()
+    user_hash_label.pack()
 
     async with create_task_group() as task_group:
         await task_group.spawn(update_tk, root_frame)
+        await task_group.spawn(
+            register,
+            request_info_queue,
+            new_user_hash_queue
+        )
 
 
 def main():
