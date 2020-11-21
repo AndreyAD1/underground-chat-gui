@@ -4,6 +4,7 @@ import logging
 import re
 import socket
 import tkinter as tk
+from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 
 from anyio import create_task_group
@@ -29,6 +30,9 @@ def process_button_click(
     if host and port and username:
         request_info_queue.put_nowait((host, port, username))
         username_entry.delete(0, tk.END)
+    else:
+        warning_msg = 'Для регистрации должны быть заполнены все поля'
+        messagebox.showwarning('Не все поля заполнены', warning_msg)
 
 
 async def register(request_info_queue, new_user_hash_queue):
@@ -40,16 +44,16 @@ async def register(request_info_queue, new_user_hash_queue):
             async with timeout(10) as timeout_manager:
                 reader, writer = await asyncio.open_connection(host, port)
         except socket.gaierror:
-            error_msg = f'ОШИБКА. Нет соединения с сервером "{server_address}"'
+            error_msg = f'Нет соединения с сервером "{server_address}"'
             logger.error(error_msg)
-            new_user_hash_queue.put_nowait(error_msg)
+            messagebox.showerror(error_msg, 'Проверьте адрес и соединение')
             continue
         except asyncio.TimeoutError:
             if not timeout_manager.expired:
                 raise
             error_message = f'Нет ответа от {server_address}'
             logger.error(error_message)
-            new_user_hash_queue.put_nowait(error_message)
+            messagebox.showerror(error_message, 'Проверьте адрес и порт')
             continue
 
         server_response = await reader.readline()
