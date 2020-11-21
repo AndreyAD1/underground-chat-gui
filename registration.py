@@ -25,8 +25,9 @@ def process_button_click(
     host = host_entry.get()
     port = port_entry.get()
     username = username_entry.get()
-    request_info_queue.put_nowait((host, port, username))
-    username_entry.delete(0, tk.END)
+    if host and port and username:
+        request_info_queue.put_nowait((host, port, username))
+        username_entry.delete(0, tk.END)
 
 
 async def register(request_info_queue, new_user_hash_queue):
@@ -105,7 +106,9 @@ async def draw(request_info_queue, new_user_hash_queue, log_queue):
         request_info_queue
     )
 
+    log_panel_label = tk.Label(lower_frame, text='Журнал сообщений')
     log_panel = ScrolledText(lower_frame, wrap='none')
+    log_panel_label.pack()
     log_panel.pack(side="bottom", fill="both", expand=True)
 
     root_frame.pack(fill="both", expand=True)
