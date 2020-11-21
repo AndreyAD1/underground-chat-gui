@@ -69,25 +69,31 @@ async def update_hash_label(user_hash_label, new_user_hash_queue):
         user_hash_label['text'] = f'Хэш нового пользователя: {user_hash}'
 
 
-async def draw(request_info_queue, new_user_hash_queue):
+async def draw(request_info_queue, new_user_hash_queue, log_queue):
     root = tk.Tk()
     root.title('Регистрация в чат Майнкрафтера')
-    root_frame = tk.Frame()
-    root_frame.pack(fill="both", expand=True)
+    root_frame = tk.Frame(root)
+    upper_frame = tk.Frame(root_frame)
+    lower_frame = tk.Frame(root_frame)
 
-    host_entry = tk.Entry(width=50)
-    port_entry = tk.Entry(width=50)
-    user_name_entry = tk.Entry(width=50)
-    sign_up_button = tk.Button(text='Регистрация')
-    user_hash_label = tk.Label(width=50, bg='black', fg='white')
-
+    host_entry = tk.Entry(upper_frame, width=50)
+    port_entry = tk.Entry(upper_frame, width=50)
+    user_name_entry = tk.Entry(upper_frame, width=50)
+    sign_up_button = tk.Button(upper_frame, text='Регистрация')
+    user_hash_label = tk.Label(upper_frame, width=50, bg='black', fg='white')
     sign_up_button['command'] = lambda: process_button_click(
-            host_entry,
-            port_entry,
-            user_name_entry,
-            request_info_queue
-        )
+        host_entry,
+        port_entry,
+        user_name_entry,
+        request_info_queue
+    )
 
+    conversation_panel = ScrolledText(lower_frame, wrap='none')
+    conversation_panel.pack(side="bottom", fill="both", expand=True)
+
+    root_frame.pack(fill="both", expand=True)
+    upper_frame.pack()
+    lower_frame.pack()
     host_entry.pack()
     port_entry.pack()
     user_name_entry.pack()
@@ -112,7 +118,12 @@ def main():
     try:
         request_info_queue = asyncio.Queue()
         new_user_hash_queue = asyncio.Queue()
-        main_coroutine = draw(request_info_queue, new_user_hash_queue)
+        log_queue = asyncio.Queue()
+        main_coroutine = draw(
+            request_info_queue,
+            new_user_hash_queue,
+            log_queue
+        )
 
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main_coroutine)
