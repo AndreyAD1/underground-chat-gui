@@ -1,9 +1,27 @@
+import asyncio
 import json
 from logger import logger
+import re
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 
+from anyio import create_task_group
+
+from gui import TkAppClosed, update_tk
 from open_connection import open_connection
+
+
+def process_button_click(
+        host_entry,
+        port_entry,
+        username_entry,
+        request_info_queue
+):
+    host = host_entry.get()
+    port = port_entry.get()
+    username = username_entry.get()
+    request_info_queue.put_nowait((host, port, username))
+    username.delete(0, tk.END)
 
 
 async def register(host, port, user_name):
@@ -33,7 +51,7 @@ async def register(host, port, user_name):
     return user_token
 
 
-def main():
+async def draw(request_info_queue, new_user_hash_queue):
     root = tk.Tk()
     root.title('Регистрация в чат Майнкрафтера')
     root_frame = tk.Frame()
@@ -48,7 +66,12 @@ def main():
 
     sign_up_button.bind(
         'Sign Up',
-        lambda event: register(host_entry, port_entry, user_name_entry)
+        lambda event: process_button_click(
+            host_entry,
+            port_entry,
+            user_name_entry,
+            request_info_queue
+        )
     )
 
     host_entry.pack()
@@ -58,7 +81,20 @@ def main():
     messages_window.pack()
     user_hash.pack()
 
-    root.mainloop()
+    async with create_task_group() as task_group:
+        await task_group.spawn(update_tk, root_frame)
+
+
+def main():
+    try:
+        request_info_queue = asyncio.Queue()
+        new_user_hash_queue = asyncio.Queue()
+        main_coroutine = draw(request_info_queue, new_user_hash_queue)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main_coroutine)
+    except (KeyboardInterrupt, TkAppClosed):
+        return
 
 
 if __name__ == '__main__':
