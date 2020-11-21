@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 
 from anyio import create_task_group
+from async_timeout import timeout
 
 from gui import TkAppClosed
 from gui import update_conversation_history as update_scroll_panel, update_tk
@@ -34,14 +35,21 @@ async def register(request_info_queue, new_user_hash_queue):
     while True:
         host, port, user_name = await request_info_queue.get()
         server_address = f'{host}:{port}'
-        log_msg = f'Установка соединения с сервером "{server_address}"'
-        logger.debug(log_msg)
+        logger.debug(f'Установка соединения с сервером "{server_address}"')
         try:
-            reader, writer = await asyncio.open_connection(host, port)
+            async with timeout(10) as timeout_manager:
+                reader, writer = await asyncio.open_connection(host, port)
         except socket.gaierror:
-            log_msg = f'ОШИБКА. Нет соединения с сервером "{server_address}"'
-            logger.error(log_msg)
-            new_user_hash_queue.put_nowait(log_msg)
+            error_msg = f'ОШИБКА. Нет соединения с сервером "{server_address}"'
+            logger.error(error_msg)
+            new_user_hash_queue.put_nowait(error_msg)
+            continue
+        except asyncio.TimeoutError:
+            if not timeout_manager.expired:
+                raise
+            error_message = f'Нет ответа от {server_address}'
+            logger.error(error_message)
+            new_user_hash_queue.put_nowait(error_message)
             continue
 
         server_response = await reader.readline()
