@@ -8,7 +8,8 @@ from tkinter.scrolledtext import ScrolledText
 
 from anyio import create_task_group
 
-from gui import TkAppClosed, update_tk
+from gui import TkAppClosed
+from gui import update_conversation_history as update_scroll_panel, update_tk
 
 
 def process_button_click(
@@ -25,13 +26,19 @@ def process_button_click(
     username_entry.delete(0, tk.END)
 
 
-async def register(request_info_queue, new_user_hash_queue):
+async def register(request_info_queue, new_user_hash_queue, log_queue):
     while True:
         host, port, user_name = await request_info_queue.get()
-        logger.debug('Begin to register')
+        server_address = f'{host}:{port}'
+        log_msg = f'Установка соединения с сервером {server_address}'
+        logger.debug(log_msg)
+        log_queue.put_nowait(log_msg)
         try:
             reader, writer = await asyncio.open_connection(host, port)
         except socket.gaierror:
+            log_msg = f'ОШИБКА. Нет соединения с сервером {server_address}'
+            logger.error(log_msg)
+            log_queue.put_nowait(log_msg)
             new_user_hash_queue.put_nowait('ОШИБКА. Нет соединения с сервером')
             continue
 
@@ -51,6 +58,7 @@ async def register(request_info_queue, new_user_hash_queue):
 
         server_response = await reader.readline()
         logger.debug(repr(server_response.decode()))
+        log_queue.put_nowait(repr(server_response.decode()))
         user_features = json.loads(server_response)
         try:
             user_token = user_features['account_hash']
@@ -63,9 +71,6 @@ async def register(request_info_queue, new_user_hash_queue):
 async def update_hash_label(user_hash_label, new_user_hash_queue):
     while True:
         user_hash = await new_user_hash_queue.get()
-        if user_hash is None:
-            # process the error
-            user_hash = 'ERROR'
         user_hash_label['text'] = f'Хэш нового пользователя: {user_hash}'
 
 
@@ -88,8 +93,8 @@ async def draw(request_info_queue, new_user_hash_queue, log_queue):
         request_info_queue
     )
 
-    conversation_panel = ScrolledText(lower_frame, wrap='none')
-    conversation_panel.pack(side="bottom", fill="both", expand=True)
+    log_panel = ScrolledText(lower_frame, wrap='none')
+    log_panel.pack(side="bottom", fill="both", expand=True)
 
     root_frame.pack(fill="both", expand=True)
     upper_frame.pack()
@@ -105,13 +110,15 @@ async def draw(request_info_queue, new_user_hash_queue, log_queue):
         await task_group.spawn(
             register,
             request_info_queue,
-            new_user_hash_queue
+            new_user_hash_queue,
+            log_queue
         )
         await task_group.spawn(
             update_hash_label,
             user_hash_label,
             new_user_hash_queue
         )
+        await task_group.spawn(update_scroll_panel, log_panel, log_queue)
 
 
 def main():
