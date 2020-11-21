@@ -67,9 +67,13 @@ async def register(request_info_queue, new_user_hash_queue):
 
 
 async def update_hash_label(user_hash_label, new_user_hash_queue):
+    user_hash_label['state'] = 'disabled'
     while True:
         user_hash = await new_user_hash_queue.get()
-        user_hash_label['text'] = user_hash
+        user_hash_label['state'] = 'normal'
+        user_hash_label.delete('1.0', tk.END)
+        user_hash_label.insert(1.0, user_hash)
+        user_hash_label['state'] = 'disabled'
 
 
 async def draw(request_info_queue, new_user_hash_queue, log_queue):
@@ -87,7 +91,7 @@ async def draw(request_info_queue, new_user_hash_queue, log_queue):
     user_name_entry = tk.Entry(upper_frame, width=50)
     sign_up_button = tk.Button(upper_frame, text='Регистрация')
     hash_label = tk.Label(upper_frame, text='Хэш созданного пользователя')
-    user_hash_field = tk.Label(upper_frame, width=50, bg='white', fg='red')
+    user_hash_field = tk.Text(upper_frame, height=1, width=50, bg='white', fg='red')
     sign_up_button['command'] = lambda: process_button_click(
         host_entry,
         port_entry,
