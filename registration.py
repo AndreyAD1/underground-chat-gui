@@ -22,7 +22,7 @@ def process_button_click(
     port = port_entry.get()
     username = username_entry.get()
     request_info_queue.put_nowait((host, port, username))
-    username.delete(0, tk.END)
+    username_entry.delete(0, tk.END)
 
 
 async def register(request_info_queue, new_user_hash_queue):
@@ -32,7 +32,7 @@ async def register(request_info_queue, new_user_hash_queue):
         try:
             reader, writer = await asyncio.open_connection(host, port)
         except socket.gaierror:
-            new_user_hash_queue.put_nowait('Нет соединения с сервером')
+            new_user_hash_queue.put_nowait('ОШИБКА. Нет соединения с сервером')
             continue
 
         server_response = await reader.readline()
