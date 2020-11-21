@@ -12,6 +12,8 @@ from gui import TkAppClosed
 from gui import update_conversation_history as update_scroll_panel, update_tk
 
 logger = logging.getLogger(__file__)
+DEFAULT_HOST_ADDRESS = 'minechat.dvmn.org'
+DEFAULT_REGISTRATION_PORT = 5050
 
 
 def process_button_click(
@@ -73,6 +75,7 @@ async def update_hash_label(user_hash_label, new_user_hash_queue):
         user_hash_label['state'] = 'normal'
         user_hash_label.delete('1.0', tk.END)
         user_hash_label.insert(1.0, user_hash)
+        user_hash_label.tag_add('center', '1.0', 'end')
         user_hash_label['state'] = 'disabled'
 
 
@@ -84,14 +87,17 @@ async def draw(request_info_queue, new_user_hash_queue, log_queue):
     lower_frame = tk.Frame(root_frame)
 
     host_label = tk.Label(upper_frame, text='Адрес сервера')
-    host_entry = tk.Entry(upper_frame, width=50)
+    host_entry = tk.Entry(upper_frame, width=50, justify='center')
+    host_entry.insert(0, DEFAULT_HOST_ADDRESS)
     port_label = tk.Label(upper_frame, text='Номер порта для регистрации')
-    port_entry = tk.Entry(upper_frame, width=50)
+    port_entry = tk.Entry(upper_frame, width=50, justify='center')
+    port_entry.insert(0, str(DEFAULT_REGISTRATION_PORT))
     user_name_label = tk.Label(upper_frame, text='Имя нового пользователя')
-    user_name_entry = tk.Entry(upper_frame, width=50)
+    user_name_entry = tk.Entry(upper_frame, width=50, justify='center')
     sign_up_button = tk.Button(upper_frame, text='Регистрация')
     hash_label = tk.Label(upper_frame, text='Хэш созданного пользователя')
-    user_hash_field = tk.Text(upper_frame, height=1, width=50, bg='white', fg='red')
+    user_hash_text = tk.Text(upper_frame, height=1, width=50, fg='red')
+    user_hash_text.tag_configure('center', justify='center')
     sign_up_button['command'] = lambda: process_button_click(
         host_entry,
         port_entry,
@@ -113,7 +119,7 @@ async def draw(request_info_queue, new_user_hash_queue, log_queue):
     user_name_entry.pack()
     sign_up_button.pack()
     hash_label.pack()
-    user_hash_field.pack()
+    user_hash_text.pack()
 
     async with create_task_group() as task_group:
         await task_group.spawn(update_tk, root_frame)
@@ -124,7 +130,7 @@ async def draw(request_info_queue, new_user_hash_queue, log_queue):
         )
         await task_group.spawn(
             update_hash_label,
-            user_hash_field,
+            user_hash_text,
             new_user_hash_queue
         )
         await task_group.spawn(update_scroll_panel, log_panel, log_queue)
