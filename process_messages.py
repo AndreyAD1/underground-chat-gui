@@ -7,10 +7,12 @@ import aiofiles
 from async_timeout import timeout
 from tkinter import messagebox
 
-from logger import logger
 from open_connection import open_connection
 from statuses import NicknameReceived, ReadConnectionStateChanged
 from statuses import SendingConnectionStateChanged
+
+logger = logging.getLogger('sender')
+watchdog_logger = logging.getLogger('wathchdog')
 
 
 class InvalidToken(Exception):
@@ -36,22 +38,7 @@ async def authorize(reader, writer, token):
     return user_features
 
 
-class WatchdogFormatter(logging.Formatter):
-    def formatTime(self, record, datefmt=None):
-        return int(record.created)
-
-
 async def watch_for_connection(host, port, token):
-    watchdog_logger = logging.getLogger(__name__)
-    watchdog_logger.setLevel(logging.DEBUG)
-    for handler in watchdog_logger.handlers:
-        watchdog_logger.removeHandler(handler)
-
-    console = logging.StreamHandler()
-    formatter = WatchdogFormatter('[%(asctime)s] %(message)s')
-    console.setFormatter(formatter)
-    watchdog_logger.addHandler(console)
-    logger.debug('Launch the new watchdog')
     async with open_connection(host, port) as (reader, writer):
         await authorize(reader, writer, token)
         while True:

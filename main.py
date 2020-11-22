@@ -1,8 +1,11 @@
 import asyncio
+import logging
 
 import configargparse
 
 from gui import draw, TkAppClosed
+
+logger = logging.getLogger(__file__)
 
 
 def get_input_arguments():
@@ -56,10 +59,34 @@ def get_input_arguments():
     return input_arguments
 
 
+class WatchdogFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        return int(record.created)
+
+
 def main():
+    logger = logging.getLogger('sender')
+    logger.setLevel(logging.DEBUG)
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+    console = logging.StreamHandler()
+    formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+    console.setFormatter(formatter)
+    logger.addHandler(console)
+
+    watchdog_logger = logging.getLogger('wathchdog')
+    watchdog_logger.setLevel(logging.DEBUG)
+    for handler in watchdog_logger.handlers:
+        watchdog_logger.removeHandler(handler)
+    console = logging.StreamHandler()
+    formatter = WatchdogFormatter('[%(asctime)s] %(message)s')
+    console.setFormatter(formatter)
+    watchdog_logger.addHandler(console)
+    watchdog_logger.debug('Launch the new watchdog')
+
     try:
         input_arguments = get_input_arguments()
-
+        logger.info('Get input arguments')
         messages_queue = asyncio.Queue()
         history_queue = asyncio.Queue()
         sending_queue = asyncio.Queue()
@@ -71,7 +98,7 @@ def main():
             sending_queue,
             status_updates_queue,
         )
-
+        logger.info('Start an event loop')
         loop = asyncio.get_event_loop()
         loop.run_until_complete(main_coroutine)
     except (KeyboardInterrupt, TkAppClosed):

@@ -111,6 +111,7 @@ async def draw(request_info_queue, new_user_hash_queue, log_queue):
     hash_label = tk.Label(upper_frame, text='Хэш созданного пользователя')
     user_hash_text = tk.Text(upper_frame, height=1, width=50, fg='red')
     user_hash_text.tag_configure('center', justify='center')
+
     sign_up_button['command'] = lambda: process_button_click(
         host_entry,
         port_entry,

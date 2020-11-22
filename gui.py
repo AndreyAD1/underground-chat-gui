@@ -1,16 +1,18 @@
 import asyncio
-
+import logging
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 
 from anyio import create_task_group
 import aiofiles
 
-from logger import logger
 from process_messages import read_msgs, send_messages, save_messages
 from process_messages import watch_for_connection
 from statuses import NicknameReceived, ReadConnectionStateChanged
 from statuses import SendingConnectionStateChanged
+
+
+logger = logging.getLogger('gui')
 
 
 class TkAppClosed(Exception):

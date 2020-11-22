@@ -1,9 +1,10 @@
 import asyncio
 from contextlib import asynccontextmanager
 from itertools import count
+import logging
 import socket
 
-from logger import logger
+logger = logging.getLogger(__file__)
 
 
 @asynccontextmanager
