@@ -8,7 +8,7 @@ The training courses for web-developers - [dvmn.org](https://dvmn.org/).
 
 ## Getting Started
 
-###Prerequisites
+### Prerequisites
 
 Python v3.9 should be already installed. 
 Afterwards you should verify if [Tkinter library](https://docs.python.org/3/library/tkinter.html)
