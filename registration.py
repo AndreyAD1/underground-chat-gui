@@ -35,24 +35,28 @@ def process_button_click(
         messagebox.showwarning('Не все поля заполнены', warning_msg)
 
 
-async def register(request_info_queue, new_user_hash_queue):
+async def register(request_info_queue, new_user_hash_queue, message_queue):
     while True:
         host, port, user_name = await request_info_queue.get()
         server_address = f'{host}:{port}'
-        logger.debug(f'Установка соединения с сервером "{server_address}"')
+        msg = f'Установка соединения с сервером "{server_address}"'
+        logger.debug(msg)
+        message_queue.put_nowait(msg)
         try:
             async with timeout(10) as timeout_manager:
                 reader, writer = await asyncio.open_connection(host, port)
         except socket.gaierror:
-            error_msg = f'Нет соединения с сервером "{server_address}"'
-            logger.error(error_msg)
-            messagebox.showerror(error_msg, 'Проверьте адрес и соединение')
+            error_message = f'Нет соединения с сервером "{server_address}"'
+            logger.error(error_message)
+            message_queue.put_nowait(error_message)
+            messagebox.showerror(error_message, 'Проверьте адрес и соединение')
             continue
         except asyncio.TimeoutError:
             if not timeout_manager.expired:
                 raise
             error_message = f'Нет ответа от {server_address}'
             logger.error(error_message)
+            message_queue.put_nowait(error_message)
             messagebox.showerror(error_message, 'Проверьте адрес и порт')
             continue
 
@@ -75,8 +79,12 @@ async def register(request_info_queue, new_user_hash_queue):
         user_features = json.loads(server_response)
         try:
             user_token = user_features['account_hash']
+            message_queue.put_nowait(f'Получен токен: {user_token}')
         except (AttributeError, KeyError):
             user_token = None
+            warning_message = f'Не удалось зарегистрировать пользователя'
+            logger.warning(warning_message)
+            message_queue.put_nowait(warning_message)
 
         new_user_hash_queue.put_nowait(user_token)
 
@@ -92,7 +100,7 @@ async def update_hash_label(user_hash_label, new_user_hash_queue):
         user_hash_label['state'] = 'disabled'
 
 
-async def draw(request_info_queue, new_user_hash_queue, log_queue):
+async def draw(request_info_queue, new_user_hash_queue, msg_queue):
     root = tk.Tk()
     root.title('Регистрация в чат Майнкрафтера')
     root_frame = tk.Frame(root)
@@ -143,40 +151,31 @@ async def draw(request_info_queue, new_user_hash_queue, log_queue):
             register,
             request_info_queue,
             new_user_hash_queue,
+            msg_queue
         )
         await task_group.spawn(
             update_hash_label,
             user_hash_text,
             new_user_hash_queue
         )
-        await task_group.spawn(update_scroll_panel, log_panel, log_queue)
-
-
-class TkinterLogHandler(logging.Handler):
-    def __init__(self, log_queue):
-        super().__init__()
-        self.log_queue = log_queue
-
-    def emit(self, record):
-        self.log_queue.put_nowait(self.format(record))
+        await task_group.spawn(update_scroll_panel, log_panel, msg_queue)
 
 
 def main():
-    logging.basicConfig(level=logging.ERROR)
+    logging.basicConfig(
+        format='%(levelname)s:%(asctime)s:%(message)s',
+        level=logging.ERROR
+    )
     logger.setLevel(logging.DEBUG)
-    log_queue = asyncio.Queue()
-    tkinter_log_handler = TkinterLogHandler(log_queue)
-    formatter = logging.Formatter('%(levelname)s:%(asctime)s:%(message)s')
-    tkinter_log_handler.setFormatter(formatter)
-    logger.addHandler(tkinter_log_handler)
 
     request_info_queue = asyncio.Queue()
     new_user_hash_queue = asyncio.Queue()
+    msg_queue = asyncio.Queue()
     try:
         main_coroutine = draw(
             request_info_queue,
             new_user_hash_queue,
-            log_queue
+            msg_queue
         )
 
         loop = asyncio.get_event_loop()
