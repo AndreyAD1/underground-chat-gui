@@ -2,10 +2,10 @@ import asyncio
 import json
 import logging
 import re
+from tkinter import messagebox
 
 import aiofiles
 from async_timeout import timeout
-from tkinter import messagebox
 
 from open_connection import open_connection
 from statuses import NicknameReceived, ReadConnectionStateChanged
