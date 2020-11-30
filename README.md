@@ -32,7 +32,7 @@ This repository contains two independent scripts.
 
 A Linux command to run a sign up script:
 ```bash
-$ python registrate.py
+$ python registration.py
 ```
 The sign up script returns a new user token. 
 Afterwards you should use this token to run the chat: 
