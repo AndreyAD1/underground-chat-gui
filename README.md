@@ -15,7 +15,7 @@ Afterwards you should verify if [Tkinter library](https://docs.python.org/3/libr
  is properly installed on your system. 
 On Python Wiki [the section "Checking your Tkinter support" ](https://wiki.python.org/moin/TkInter) 
  describes a way to check whether your Tkinter support is working.
-In case of problems consider to follow [these instructions](https://stackoverflow.com/questions/25905540/importerror-no-module-named-tkinter).
+In case of problems consider following [these instructions](https://stackoverflow.com/questions/25905540/importerror-no-module-named-tkinter).
 
 ### How to Install
 
