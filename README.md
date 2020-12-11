@@ -34,6 +34,10 @@ A Linux command to run a sign up script:
 ```bash
 $ python registration.py
 ```
+Sign up window:
+
+![sign up window](screenshots/sign_up_window.png)
+
 The sign up script returns a new user token. 
 Afterwards you should use this token to run the chat: 
 ```bash
@@ -41,6 +45,10 @@ $ python main.py --host chat_host.org --port 1234 --token token
 ```
 You can set the input arguments as environment variables. 
 See `python main.py --help` for more details.
+
+Chat window:
+
+![chat window](screenshots/chat_window.png)
 
 ## License
 
